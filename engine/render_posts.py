@@ -157,6 +157,18 @@ def paste_flag(img, country, x, y, size, ring=True):
     return True
 
 
+def trip_info(deal):
+    """(nights, days, is_weekend) for a return deal; weekend = out Thu/Fri/Sat, back Sun/Mon, 3 nights max."""
+    dep, ret = parse(deal['departs']), parse(deal.get('returns'))
+    if not ret:
+        return None, None, False
+    nights = (ret.date() - dep.date()).days
+    wk = dep.weekday() in (3, 4, 5) and ret.weekday() in (6, 0) and nights <= 3
+    if 'weekend' in deal:
+        wk = bool(deal['weekend'])
+    return nights, nights + 1, wk
+
+
 def render(deal, idx, out_path, today):
     c1, c2, accent = PALETTES[idx % len(PALETTES)]
     acc = hexrgb(accent)
@@ -167,8 +179,16 @@ def render(deal, idx, out_path, today):
     white = (255, 255, 255)
 
     # Top pills
-    pill(d, (M, 80 * S), 'FLIGHT DEAL', font('bold', 26), (255, 255, 255, 46), white)
-    trip_label = 'RETURN TRIP' if deal['trip'] == 'Return' else 'ONE WAY'
+    nights, days, weekend = trip_info(deal)
+    if nights is None:
+        pill(d, (M, 80 * S), 'FLIGHT DEAL', font('bold', 26), (255, 255, 255, 46), white)
+        trip_label = 'ONE WAY'
+    else:
+        if weekend:
+            pill(d, (M, 80 * S), 'WEEKEND GETAWAY', font('black', 26), (255, 255, 255, 255), dark)
+        else:
+            pill(d, (M, 80 * S), f'{days}-DAY GETAWAY', font('bold', 26), (255, 255, 255, 46), white)
+        trip_label = f'RETURN · {nights} NIGHT' + ('S' if nights != 1 else '')
     pill(d, (W * S - M, 80 * S), trip_label, font('bold', 26), acc + (255,), dark, anchor_right=True)
 
     # Origin capsule: flag + FROM TIRANA, so the departure city reads at a glance
@@ -237,7 +257,7 @@ def render(deal, idx, out_path, today):
     card_w = max(pw + 120 * S, 470 * S)
     card_h = 300 * S
     d.rounded_rectangle((M, card_top, M + card_w, card_top + card_h), radius=44 * S, fill=acc + (255,))
-    label = 'return trip, only' if deal['trip'] == 'Return' else 'only'
+    label = 'both flights, only' if deal.get('returns') else 'only'
     d.text((M + 52 * S, card_top + 72 * S), label, font=font('serif_i', 48), fill=dark, anchor='ls')
     d.text((M + 46 * S, card_top + card_h - 44 * S), price, font=pf, fill=dark, anchor='ls')
 
@@ -256,8 +276,9 @@ def render(deal, idx, out_path, today):
     dy = card_top + card_h + 78 * S
     df = font('semi', 40)
     if ret:
-        d.text((M, dy), f"Out:  {en_date(dep)}  ·  {dep:%H:%M}", font=df, fill=white, anchor='ls')
-        d.text((M, dy + 58 * S), f"Back:  {en_date(ret)}  ·  {ret:%H:%M}", font=df, fill=white, anchor='ls')
+        d.text((M, dy), f"{en_date(dep)}  →  {en_date(ret)}", font=font('bold', 44), fill=white, anchor='ls')
+        d.text((M, dy + 58 * S), f"Out {dep:%H:%M}  ·  Back {ret:%H:%M}  ·  direct both ways", font=font('med', 32),
+               fill=acc + (255,), anchor='ls')
     else:
         d.text((M, dy), f"{en_date(dep)}  ·  {dep.strftime('%H:%M')}", font=df, fill=white, anchor='ls')
         d.text((M, dy + 58 * S), 'Book fast, prices change every day!', font=font('med', 34),

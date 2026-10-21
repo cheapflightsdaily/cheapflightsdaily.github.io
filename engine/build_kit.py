@@ -36,19 +36,29 @@ def flag_emoji(country):
     return ''.join(chr(0x1F1E6 + ord(c) - ord('a')) for c in code) + ' '
 
 
+PRICE_CAP = 70  # max total price for a return trip, in EUR
+
+
+def getaway_bits(d):
+    nights, days, wk = rp.trip_info(d)
+    return nights, days, wk
+
+
 def caption(d):
+    """Caption for a single deal post (used when a city has only one deal)."""
     ap = rp.AIRPORT_SHORT.get(d.get('code', ''), '')
     dep = rp.parse(d['departs'])
     ret = rp.parse(d.get('returns'))
     origin = d.get('origin', 'Tirana')
-    lines = [d['hook'], '', f"✈️ {flag_emoji(d.get('origin_country', 'Albania'))}{origin} → {flag_emoji(d.get('country', ''))}{d['city']}" + (f" ({ap})" if ap else '')]
+    nights, days, wk = getaway_bits(d)
+    lines = [d['hook'], '', f"✈️ {flag_emoji(d.get('origin_country', 'Albania'))}{origin} ⇄ {flag_emoji(d.get('country', ''))}{d['city']}" + (f" ({ap})" if ap else '')]
     if ret:
-        lines.append(f"📅 Out: {dep:%a %-d %b} at {dep:%H:%M}")
-        lines.append(f"📅 Back: {ret:%a %-d %b} at {ret:%H:%M}")
+        lines.append(f"📅 {dep:%a %-d %b} to {ret:%a %-d %b} · {nights} nights" + (' · weekend 🎉' if wk else ''))
+        lines.append(f"🛫 Out {dep:%H:%M} · 🛬 Back {ret:%H:%M}")
+        lines.append(f"🎫 €{int(d['price'])} for both flights · {d['airline']} · direct")
     else:
         lines.append(f"📅 {dep:%a %-d %b} at {dep:%H:%M}")
-    trip = 'Return trip, total price' if d['trip'] == 'Return' else 'One way'
-    lines.append(f"🎫 {trip} · {d['airline']} · direct flight")
+        lines.append(f"🎫 One way · {d['airline']} · direct flight")
     lines.append('🎒 Price includes a small personal bag')
     if d.get('note'):
         lines.append(d['note'])
@@ -60,7 +70,8 @@ def caption(d):
 KEYCAPS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
 def hashtags(origin='Tirana', country='Albania'):
     o, c = city_tag(origin), city_tag(country)
-    return f'#cheapflights #flightdeals #{o} #{c} #flyfrom{o} #travel #traveldeals #budgettravel #europetravel #cheapflightsdaily'
+    return (f'#weekendgetaway #citybreak #cheapflights #flightdeals #{o} #{c} #flyfrom{o} #shorttrip '
+            f'#traveldeals #budgettravel #europetravel #cheapflightsdaily')
 
 
 HASHTAGS = hashtags()
@@ -72,6 +83,10 @@ def short_note(d):
         return 'visa needed' if 'UK' not in n else 'UK visa needed'
     if 'Lands at' in n:
         return 'lands at ' + n.split('Lands at ')[1].split(',')[0]
+    if 'Back from' in n:
+        return 'back from ' + n.split('Back from ')[1].split(',')[0].rstrip('.')
+    if 'Out to' in n:
+        return n.replace('ℹ️ ', '').rstrip('.').lower()
     return ''
 
 
@@ -88,47 +103,61 @@ def summary_caption(deals, today):
 def carousel_caption(deals):
     origin = deals[0].get('origin', 'Tirana') if deals else 'Tirana'
     ocountry = deals[0].get('origin_country', 'Albania') if deals else 'Albania'
-    lines = [f"🔥 {len(deals)} flight deals from {flag_emoji(ocountry)}{origin} today. Swipe through 👉", '']
+    cheapest = min(int(d['price']) for d in deals) if deals else 0
+    nwk = sum(1 for d in deals if getaway_bits(d)[2])
+    head = f"🧳 {len(deals)} short getaways from {flag_emoji(ocountry)}{origin}, return flights from €{cheapest}. Swipe through 👉"
+    lines = [head]
+    if nwk:
+        lines.append(f"🎉 {nwk} of them are weekend trips")
+    lines.append('')
     for i, d in enumerate(deals):
         dep = rp.parse(d['departs'])
         ret = rp.parse(d.get('returns'))
-        when = f"{dep:%a %-d %b} to {ret:%a %-d %b}" if ret else f"{dep:%a %-d %b}"
-        trip = 'Return' if ret else 'One way'
+        nights, days, wk = getaway_bits(d)
+        if ret:
+            when = f"{dep:%a %-d %b} to {ret:%a %-d %b}" if dep.month != ret.month else f"{dep:%a %-d} to {ret:%a %-d %b}"
+            info = f"€{int(d['price'])} return · {when} · {nights} nights" + (' · weekend' if wk else '')
+        else:
+            info = f"€{int(d['price'])} one way · {dep:%a %-d %b}"
         extra = short_note(d)
-        line = f"{KEYCAPS[i] if i < 10 else str(i + 1) + '.'} {flag_emoji(d.get('country', ''))}{d['city']} €{int(d['price'])} · {trip} · {when} · {d['airline']}"
+        line = f"{KEYCAPS[i] if i < 10 else str(i + 1) + '.'} {flag_emoji(d.get('country', ''))}{d['city']} {info}"
         if extra:
             line += f" ({extra})"
         lines.append(line)
-    lines += ['', '🎒 Prices include a small personal bag. Direct flights only.',
-              f'Prices change fast, so grab them while they last. All {origin} booking links in bio 🔗', '', hashtags(origin, ocountry)]
+    lines += ['', '✈️ Prices are for both flights, direct, with a small personal bag.',
+              f'Prices change fast, so grab them while they last. All {origin} booking links in bio 🔗',
+              'Save this for your next weekend 📌', '', hashtags(origin, ocountry)]
     return '\n'.join(lines)
 
 
 def reel_caption(deals, total=None, cities=None):
-    """Caption for the daily reel: one line per deal shown, then hashtags for every departure city."""
+    """Caption for the daily reel: one line per getaway shown, then hashtags for every departure city."""
     origins = []
     for d in deals:
         if d.get('origin') not in [o[0] for o in origins]:
             origins.append((d.get('origin'), d.get('origin_country')))
     multi = len(origins) > 1
+    cheapest = min(int(d['price']) for d in deals)
     if multi:
-        head = f"✈️ Today's cheapest flights from {len(origins)} cities, all €30 or less!"
+        head = f"🧳 Short getaways from {len(origins)} cities, return flights from €{cheapest}!"
     else:
-        head = f"✈️ Today's cheapest flights from {flag_emoji(origins[0][1])}{origins[0][0]}, all €30 or less!"
+        head = f"🧳 Short getaways from {flag_emoji(origins[0][1])}{origins[0][0]}, return flights from €{cheapest}!"
     lines = [head, '']
     for d in deals:
         dep = rp.parse(d['departs'])
         ret = rp.parse(d.get('returns'))
-        when = f"{dep:%a %-d %b}" + (f" to {ret:%a %-d %b}, return" if ret else '')
+        nights, days, wk = getaway_bits(d)
+        when = (f"{dep:%a %-d %b} to {ret:%a %-d %b}" + (' 🎉' if wk else '')) if ret else f"{dep:%a %-d %b}"
         extra = ' (from Beauvais)' if d.get('origin_code') == 'BVA' else ''
-        lines.append(f"{flag_emoji(d.get('origin_country', ''))}{d.get('origin')} → {flag_emoji(d.get('country', ''))}{d['city']} €{int(d['price'])} · {when}{extra}")
-    lines += ['', 'Direct flights, small personal bag included. Prices change fast!']
+        lines.append(f"{flag_emoji(d.get('origin_country', ''))}{d.get('origin')} ⇄ {flag_emoji(d.get('country', ''))}{d['city']} €{int(d['price'])} · {when}{extra}")
+    lines += ['', 'Direct flights both ways, small personal bag included. Prices change fast!']
     if total:
-        lines.append(f"{total} deals today" + (", pick your city at the link in bio 🔗" if multi else ", all booking links in bio 🔗"))
+        lines.append(f"{total} getaways today" + (", pick your city at the link in bio 🔗" if multi else ", all booking links in bio 🔗"))
     else:
         lines.append('All booking links in bio 🔗')
-    lines += ['Follow @cheapflights.daily for new deals every morning ☀️', '']
-    tags = ['#cheapflights', '#flightdeals', '#traveldeals', '#budgettravel', '#europetravel', '#travelreels', '#cheapflightsdaily']
+    lines += ['Follow @cheapflights.daily for new getaways every morning ☀️', '']
+    tags = ['#weekendgetaway', '#citybreak', '#cheapflights', '#flightdeals', '#traveldeals', '#budgettravel',
+            '#europetravel', '#travelreels', '#shorttrip', '#cheapflightsdaily']
     for o, c in origins:
         tags += [f'#{city_tag(o)}', f'#flyfrom{city_tag(o)}']
     for d in deals:
@@ -166,9 +195,11 @@ def build_bio(deals, today_label, out_path, groups=None):
         for d in grp:
             dep = rp.parse(d['departs'])
             ret = rp.parse(d.get('returns'))
-            when = f"{dep:%a %-d %b}, {dep:%H:%M}" + (f" · back {ret:%a %-d %b}" if ret else '')
+            when = (f"{dep:%a %-d %b} → {ret:%a %-d %b}") if ret else f"{dep:%a %-d %b}, {dep:%H:%M}"
             note = (d.get('note') or '').replace('ℹ️ ', '').replace('⚠️ ', '')
-            items.append({'city': d['city'], 'country': d.get('country', ''), 'flag': flag_uri(d.get('country', '')),
+            nights, days, wk = getaway_bits(d)
+            items.append({'nights': nights, 'weekend': wk,
+                          'city': d['city'], 'country': d.get('country', ''), 'flag': flag_uri(d.get('country', '')),
                           'code': d.get('code', ''), 'originCode': d.get('origin_code', 'TIA'),
                           'airport': rp.AIRPORT_SHORT.get(d.get('code', ''), ''), 'price': int(d['price']),
                           'trip': d['trip'], 'when': when, 'airline': d['airline'], 'link': d['link'], 'note': note})
@@ -180,7 +211,7 @@ def build_bio(deals, today_label, out_path, groups=None):
                 i['note'] = ''
         origins.append({'origin': o, 'slug': city_tag(o), 'originFlag': flag_uri(grp[0].get('origin_country', 'Albania')),
                         'note': shared, 'deals': items})
-    page = {'updated': today_label, 'origins': origins}
+    page = {'updated': today_label, 'origins': origins, 'cap': PRICE_CAP}
     tpl = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bio_template.html')).read()
     open(out_path, 'w').write(tpl.replace('__DATA__', json.dumps(page).replace('</', '<\\/')))
 
