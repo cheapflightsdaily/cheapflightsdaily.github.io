@@ -1,0 +1,151 @@
+<title>Cheap Flights Daily</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a single phone-width column of boarding-pass cards, cheapest first, opened from an Instagram bio. */
+:root {
+  --bg: #EAF1F8; --card: #FFFFFF; --ink: #0B1B2E; --muted: #55667A; --line: #D3DEEA;
+  --sky: #1E6FB8; --sky-ink: #FFFFFF; --sun: #FFD166; --sun-ink: #0E1220; --ret: #0F7A5A;
+  --display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #08121F; --card: #102033; --ink: #EAF1F8; --muted: #93A6BC; --line: #1F3550;
+  --sky: #5AA6F0; --sky-ink: #06101C; --sun: #FFD166; --sun-ink: #0E1220; --ret: #4CC38A; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #08121F; --card: #102033; --ink: #EAF1F8; --muted: #93A6BC; --line: #1F3550;
+  --sky: #5AA6F0; --sky-ink: #06101C; --sun: #FFD166; --sun-ink: #0E1220; --ret: #4CC38A; color-scheme: dark; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; }
+.wrap { max-width: 560px; margin-inline: auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 18px; }
+header { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.from { display: inline-flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 999px; padding: 6px 16px 6px 6px; font-weight: 700; letter-spacing: .04em; }
+.from img { width: 30px; height: 30px; border-radius: 50%; }
+.from small { color: var(--muted); font-weight: 600; font-size: 12px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(30px, 8vw, 40px); line-height: 1.05; margin: 0; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); font-size: 15px; }
+.brand { font-family: var(--display); font-weight: 800; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--sky); }
+.tabs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; margin: 0 -2px; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: none; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  border-radius: 999px; padding: 6px 14px 6px 6px; font: 700 15px var(--body); cursor: pointer; min-height: 44px; }
+.tab img { width: 30px; height: 30px; border-radius: 50%; }
+.tab[aria-selected="true"] { background: var(--sky); color: var(--sky-ink); border-color: var(--sky); }
+.tab:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+.empty { color: var(--muted); padding: 24px 0; }
+.list { display: flex; flex-direction: column; gap: 12px; }
+.pass { background: var(--card); border: 1px solid var(--line); border-radius: 18px; display: grid;
+  grid-template-columns: minmax(0, 1fr) auto; position: relative; overflow: hidden; }
+.pass::before, .pass::after { content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--bg); right: 104px; }
+.pass::before { top: -9px; } .pass::after { bottom: -9px; }
+.main { padding: 14px 14px 14px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.route { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.route img { width: 34px; height: 34px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--line); }
+.route > div { flex: 1; min-width: 0; }
+.city { font-family: var(--display); font-weight: 700; font-size: 22px; line-height: 1.1; overflow-wrap: break-word; }
+.city.long { font-size: 19px; }
+.city.xlong { font-size: 17px; }
+.onote { margin: 0; font-size: 14px; color: var(--muted); }
+.code { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .06em; }
+.meta { font-size: 14px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; border-radius: 6px; padding: 2px 7px;
+  border: 1px solid var(--line); color: var(--ink); }
+.tag.ret { color: var(--ret); border-color: currentColor; }
+.note { font-size: 13px; color: var(--muted); }
+.stub { width: 112px; border-left: 2px dashed var(--line); display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 8px; padding: 12px 8px; }
+.price { font-family: var(--display); font-weight: 800; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+.price small { display: block; font-family: var(--body); font-weight: 600; font-size: 11px; color: var(--muted); text-align: center; margin-top: 3px; }
+.book { display: inline-block; background: var(--sun); color: var(--sun-ink); font-weight: 700; font-size: 15px; text-decoration: none;
+  padding: 9px 16px; border-radius: 999px; }
+.book:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+.ig { display: inline-flex; align-items: center; gap: 8px; background: var(--card); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 999px; padding: 8px 16px 8px 10px; font-weight: 700; font-size: 15px; text-decoration: none; }
+.ig svg { width: 22px; height: 22px; flex: none; }
+.ig:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+footer .ig { align-self: flex-start; margin-top: 6px; }
+footer { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
+@media (max-width: 360px) { .stub { width: 104px; } .pass::before, .pass::after { right: 96px; } .price { font-size: 26px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="brand">Cheap Flights Daily</span>
+    <span class="from" id="from"></span>
+    <h1 id="title">Today's cheapest flights</h1>
+    <p class="lede" id="lede"></p>
+    <p class="onote" id="onote" hidden></p>
+    <a class="ig" href="https://www.instagram.com/cheapflights.daily/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="igg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#FEDA75"/><stop offset=".35" stop-color="#FA7E1E"/><stop offset=".65" stop-color="#D62976"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="6" fill="url(#igg)"/><circle cx="12" cy="12" r="4.3" fill="none" stroke="#fff" stroke-width="2"/><circle cx="17.3" cy="6.7" r="1.3" fill="#fff"/></svg><span>Follow us on Instagram</span></a>
+  </header>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Departure city"></nav>
+  <section class="list" id="list" aria-label="Flight deals" role="tabpanel"></section>
+  <footer>
+    <span>Direct flights only. Prices include a small personal bag and were checked this morning on Kiwi.com; they can change at any time, so check the final price before you pay.</span>
+    <span>New deals every morning. Follow us on Instagram so you don't miss them.</span>
+    <a class="ig" href="https://www.instagram.com/cheapflights.daily/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="igg2" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#FEDA75"/><stop offset=".35" stop-color="#FA7E1E"/><stop offset=".65" stop-color="#D62976"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="6" fill="url(#igg2)"/><circle cx="12" cy="12" r="4.3" fill="none" stroke="#fff" stroke-width="2"/><circle cx="17.3" cy="6.7" r="1.3" fill="#fff"/></svg><span>@cheapflights.daily</span></a>
+  </footer>
+</div>
+
+<script>
+const PAGE = __DATA__;
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+const from = document.getElementById('from');
+const list = document.getElementById('list');
+const tabs = document.getElementById('tabs');
+const origins = PAGE.origins || [];
+if (origins.length < 2) tabs.hidden = true;
+
+function card(d) {
+  const card = el('article', 'pass');
+  const main = el('div', 'main');
+  const route = el('div', 'route');
+  if (d.flag) { const f = el('img'); f.src = d.flag; f.alt = d.country; route.append(f); }
+  const name = el('div');
+  name.append(el('div', 'city' + (d.city.length > 11 ? ' xlong' : d.city.length > 9 ? ' long' : ''), d.city), el('div', 'code', `${d.originCode} → ${d.code}${d.airport ? ' · ' + d.airport : ''}`));
+  route.append(name);
+  const meta = el('div', 'meta');
+  meta.append(el('span', 'tag' + (d.trip === 'Return' ? ' ret' : ''), d.trip === 'Return' ? 'Return' : 'One way'));
+  meta.append(el('span', null, d.when), el('span', null, d.airline));
+  main.append(route, meta);
+  if (d.note) main.append(el('div', 'note', d.note));
+  const stub = el('div', 'stub');
+  const price = el('div', 'price', '€' + d.price);
+  price.append(el('small', null, d.trip === 'Return' ? 'both ways' : 'one way'));
+  const a = el('a', 'book', 'Book');
+  if (/^https:\/\/(www\.)?kiwi\.com\//.test(d.link)) { a.href = d.link; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+  a.setAttribute('aria-label', `Book ${d.city} for €${d.price}`);
+  stub.append(price, a);
+  card.append(main, stub);
+  return card;
+}
+
+function show(slug, push) {
+  const o = origins.find((x) => x.slug === slug) || origins[0];
+  if (!o) { list.append(el('p', 'empty', 'New deals are coming tomorrow morning.')); return; }
+  from.replaceChildren();
+  if (o.originFlag) { const f = el('img'); f.src = o.originFlag; f.alt = ''; from.append(f); }
+  from.append(el('small', null, 'FROM'), document.createTextNode(' ' + o.origin.toUpperCase()));
+  document.getElementById('title').textContent = `Today's cheapest flights from ${o.origin}`;
+  document.getElementById('lede').textContent = `${o.deals.length} deals at €30 or less · updated ${PAGE.updated}`;
+  const on = document.getElementById('onote'); on.textContent = o.note || ''; on.hidden = !o.note;
+  list.replaceChildren(...o.deals.map(card));
+  tabs.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.slug === o.slug)));
+  if (push) history.replaceState(null, '', '#' + o.slug);
+}
+
+origins.forEach((o) => {
+  const t = el('button', 'tab');
+  t.type = 'button'; t.setAttribute('role', 'tab'); t.dataset.slug = o.slug;
+  if (o.originFlag) { const f = el('img'); f.src = o.originFlag; f.alt = ''; t.append(f); }
+  t.append(document.createTextNode(o.origin));
+  t.addEventListener('click', () => show(o.slug, true));
+  tabs.append(t);
+});
+show(location.hash.slice(1), false);
+window.addEventListener('hashchange', () => show(location.hash.slice(1), false));
+</script>

@@ -1,0 +1,156 @@
+<title>Tirana Deal Posts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a daily run sheet. Summary strip of time slots on top, then one card per post (image beside caption, stacked on phones). */
+:root {
+  --bg: #EEF2F6; --surface: #FFFFFF; --fg: #0F1B2B; --muted: #5A6B80; --line: #D6DEE7;
+  --accent: #1E6FB8; --accent-ink: #FFFFFF; --done: #1F8F5F; --chip: #E3EBF4;
+  --display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0B131E; --surface: #121D2B; --fg: #E8EEF5; --muted: #93A4B8; --line: #22324A;
+  --accent: #5AA6F0; --accent-ink: #08111C; --done: #4CC38A; --chip: #1A2A3E; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0B131E; --surface: #121D2B; --fg: #E8EEF5; --muted: #93A4B8; --line: #22324A;
+  --accent: #5AA6F0; --accent-ink: #08111C; --done: #4CC38A; --chip: #1A2A3E; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.5; }
+.wrap { max-width: 1040px; margin-inline: auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 24px; }
+header { display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(30px, 6vw, 46px); line-height: 1.05; margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 62ch; margin: 0; }
+.progress { font-weight: 600; color: var(--fg); }
+.slots { display: flex; flex-wrap: wrap; gap: 8px; }
+.slot { font: inherit; display: inline-flex; align-items: baseline; gap: 8px; padding: 6px 12px; border-radius: 999px;
+  background: var(--chip); color: var(--fg); border: 1px solid transparent; cursor: pointer; font-size: 14px; }
+.slot b { font-family: var(--mono); font-weight: 500; }
+.slot.is-done { background: transparent; border-color: var(--line); color: var(--muted); text-decoration: line-through; }
+.slot:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.list { display: flex; flex-direction: column; gap: 20px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px;
+  display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start; scroll-margin-top: 16px; }
+.card.is-done { opacity: .62; }
+.shot { width: 100%; height: auto; aspect-ratio: 4 / 5; border-radius: 12px; display: block; max-width: 100%; }
+.side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.time { font-family: var(--mono); font-size: 15px; background: var(--accent); color: var(--accent-ink); padding: 3px 10px; border-radius: 8px; }
+.what { font-family: var(--display); font-weight: 600; font-size: 22px; }
+.tag { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); padding: 2px 8px; border-radius: 6px; }
+.n { margin-left: auto; font-size: 13px; color: var(--muted); }
+.caption { white-space: pre-wrap; margin: 0; font-family: var(--body); font-size: 15px; background: var(--bg);
+  border: 1px solid var(--line); border-radius: 12px; padding: 14px; overflow-wrap: anywhere; max-height: 22rem; overflow: auto; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { font: inherit; font-weight: 600; font-size: 14px; padding: 9px 14px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.done { color: var(--done); border-color: var(--done); }
+.link { font-size: 13px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: baseline; }
+.link a { color: var(--accent); font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+footer { font-size: 13px; color: var(--muted); max-width: 70ch; }
+@media (max-width: 700px) {
+  .card { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: no-preference) { .card { transition: opacity .2s ease; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Daily posting kit · __DATE__</span>
+    <h1>Today's __COUNT__ flight deals from Tirana</h1>
+    <p class="lede">Save each image (long press on your phone), copy its caption, and post at the suggested time. Put the booking link in your bio or link-in-bio page. <span class="progress" id="progress"></span></p>
+  </header>
+  <nav class="slots" id="slots" aria-label="Posting schedule"></nav>
+  <section class="list" id="list"></section>
+  <footer>Prices were found on Kiwi.com this morning and can change during the day. Before posting a deal late in the day, open its booking link once to check the fare still holds.</footer>
+</div>
+
+<script>
+const POSTS = __DATA__;
+const KEY = 'tirana-deal-posts-__DATE__';
+let done = {};
+try { done = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { done = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(done)); } catch (e) {} };
+
+const slots = document.getElementById('slots');
+const list = document.getElementById('list');
+const progress = document.getElementById('progress');
+
+function copy(text, btn, label) {
+  const ok = () => { btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = label; }, 1600); };
+  const fallback = () => {
+    const pre = btn.closest('.side').querySelector('.caption');
+    const r = document.createRange(); r.selectNodeContents(pre);
+    const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    btn.textContent = 'Selected, copy it';
+  };
+  try { navigator.clipboard.writeText(text).then(ok, fallback); } catch (e) { fallback(); }
+}
+
+function refresh() {
+  const count = POSTS.filter((p) => done[p.n]).length;
+  progress.textContent = count ? `${count} of ${POSTS.length} posted.` : '';
+  POSTS.forEach((p) => {
+    const isDone = !!done[p.n];
+    document.getElementById('card-' + p.n).classList.toggle('is-done', isDone);
+    document.getElementById('slot-' + p.n).classList.toggle('is-done', isDone);
+    const b = document.getElementById('done-' + p.n);
+    b.textContent = isDone ? 'Posted ✓' : 'Mark as posted';
+    b.classList.toggle('done', isDone);
+    b.setAttribute('aria-pressed', String(isDone));
+  });
+}
+
+POSTS.forEach((p) => {
+  const chip = document.createElement('button');
+  chip.className = 'slot'; chip.id = 'slot-' + p.n; chip.type = 'button';
+  const t = document.createElement('b'); t.textContent = p.time;
+  chip.append(t, document.createTextNode(`${p.city} €${p.price}`));
+  chip.addEventListener('click', () => document.getElementById('card-' + p.n).scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  slots.append(chip);
+
+  const card = document.createElement('article');
+  card.className = 'card'; card.id = 'card-' + p.n;
+
+  const img = document.createElement('img');
+  img.className = 'shot'; img.src = p.img; img.width = 1080; img.height = 1350;
+  img.alt = `Post: Tirana to ${p.city} for €${p.price}, ${p.trip.toLowerCase()}`;
+
+  const side = document.createElement('div'); side.className = 'side';
+  const head = document.createElement('div'); head.className = 'head';
+  const time = document.createElement('span'); time.className = 'time'; time.textContent = p.time;
+  const what = document.createElement('span'); what.className = 'what'; what.textContent = `${p.city} · €${p.price}`;
+  const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = p.trip;
+  const n = document.createElement('span'); n.className = 'n'; n.textContent = `Post ${p.n} of ${POSTS.length}`;
+  head.append(time, what, tag, n);
+
+  const pre = document.createElement('pre'); pre.className = 'caption'; pre.textContent = p.caption;
+
+  const actions = document.createElement('div'); actions.className = 'actions';
+  const cb = document.createElement('button'); cb.className = 'btn primary'; cb.type = 'button'; cb.textContent = 'Copy caption';
+  cb.addEventListener('click', () => copy(p.caption, cb, 'Copy caption'));
+  const lb = document.createElement('button'); lb.className = 'btn'; lb.type = 'button'; lb.textContent = 'Copy booking link';
+  lb.addEventListener('click', () => copy(p.link, lb, 'Copy booking link'));
+  const db = document.createElement('button'); db.className = 'btn'; db.type = 'button'; db.id = 'done-' + p.n;
+  db.addEventListener('click', () => { done[p.n] = !done[p.n]; save(); refresh(); });
+  actions.append(cb, lb, db);
+
+  const link = document.createElement('div'); link.className = 'link';
+  const a = document.createElement('a'); a.href = p.link; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = p.link;
+  link.append(document.createTextNode('Booking:'), a);
+
+  const hint = document.createElement('p'); hint.className = 'hint'; hint.textContent = `Image file: ${p.file}`;
+
+  side.append(head, pre, actions, link, hint);
+  card.append(img, side);
+  list.append(card);
+});
+refresh();
+</script>
