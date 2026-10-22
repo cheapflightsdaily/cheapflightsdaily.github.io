@@ -12,7 +12,7 @@ SQ_DATE_LONG = ['E hënë', 'E martë', 'E mërkurë', 'E enjte', 'E premte', 'E
 
 
 def city_tag(name):
-    s = unicodedata.normalize('NFD', name)
+    s = unicodedata.normalize('NFD', name.replace('ł', 'l').replace('Ł', 'L').replace('ø', 'o').replace('ß', 'ss'))
     return ''.join(c for c in s if c.isalpha() and ord(c) < 128).lower()
 
 
@@ -63,15 +63,39 @@ def caption(d):
     if d.get('note'):
         lines.append(d['note'])
     lines += ['', 'Prices change fast, so grab it while it lasts. Booking link in bio 🔗', '',
-              hashtags(origin, d.get('origin_country', 'Albania')) + f" #{city_tag(d['city'])}"]
+              hashtags(origin, d.get('origin_country', 'Albania'), [d])]
     return '\n'.join(lines)
 
 
 KEYCAPS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
-def hashtags(origin='Tirana', country='Albania'):
-    o, c = city_tag(origin), city_tag(country)
-    return (f'#weekendgetaway #citybreak #cheapflights #flightdeals #{o} #{c} #flyfrom{o} #shorttrip '
-            f'#traveldeals #budgettravel #europetravel #cheapflightsdaily')
+VISIT = {'Italy': '#visititaly', 'Spain': '#visitspain', 'Portugal': '#visitportugal', 'Malta': '#visitmalta',
+         'France': '#visitfrance', 'Greece': '#visitgreece', 'Croatia': '#visitcroatia', 'Hungary': '#visitbudapest',
+         'Poland': '#visitpoland', 'Albania': '#visitalbania', 'Ireland': '#visitireland', 'United Kingdom': '#visitbritain',
+         'Germany': '#visitgermany', 'Austria': '#visitaustria', 'Slovakia': '#visitslovakia', 'Romania': '#visitromania',
+         'Bulgaria': '#visitbulgaria', 'Czechia': '#visitczechrepublic', 'Belgium': '#visitbelgium', 'Denmark': '#visitdenmark',
+         'Netherlands': '#visitholland', 'Montenegro': '#visitmontenegro', 'Serbia': '#visitserbia'}
+# Broad reach tags first, then niche getaway tags, then deal tags; location tags are added per post.
+CORE_TAGS = ['#travel', '#travelreels', '#travelhacks', '#traveltips', '#budgettravel', '#cheaptravel', '#travelonabudget',
+             '#weekendgetaway', '#weekendtrip', '#citybreak', '#shorttrip', '#europetrip', '#europetravel',
+             '#cheapflights', '#flightdeals', '#traveldeals', '#cheapflightsdaily']
+
+
+def tag_set(origins, destinations, countries, reel=False, limit=28):
+    """Hashtags for reach: broad travel tags, getaway niche tags, then origin, destination and country tags."""
+    tags = [t for t in CORE_TAGS if reel or t != '#travelreels']
+    extra = [f'#{city_tag(o)}' for o in origins] + [f'#{city_tag(d)}' for d in destinations] + \
+            [VISIT[c] for c in countries if c in VISIT]
+    for t in extra:
+        if t not in tags:
+            tags.append(t)
+    return ' '.join(tags[:limit])
+
+
+def hashtags(origin='Tirana', country='Albania', deals=None):
+    deals = deals or []
+    dests = [d['city'] for d in deals]
+    ctry = [country] + [d.get('country', '') for d in deals]
+    return tag_set([origin], dests, list(dict.fromkeys(ctry)))
 
 
 HASHTAGS = hashtags()
@@ -126,7 +150,7 @@ def carousel_caption(deals):
         lines.append(line)
     lines += ['', '✈️ Prices are for both flights, direct, with a small personal bag.',
               f'Prices change fast, so grab them while they last. All {origin} booking links in bio 🔗',
-              'Save this for your next weekend 📌', '', hashtags(origin, ocountry)]
+              'Save this for your next weekend 📌', '', hashtags(origin, ocountry, deals)]
     return '\n'.join(lines)
 
 
@@ -156,15 +180,8 @@ def reel_caption(deals, total=None, cities=None):
     else:
         lines.append('All booking links in bio 🔗')
     lines += ['Follow @cheapflights.daily for new getaways every morning ☀️', '']
-    tags = ['#weekendgetaway', '#citybreak', '#cheapflights', '#flightdeals', '#traveldeals', '#budgettravel',
-            '#europetravel', '#travelreels', '#shorttrip', '#cheapflightsdaily']
-    for o, c in origins:
-        tags += [f'#{city_tag(o)}', f'#flyfrom{city_tag(o)}']
-    for d in deals:
-        t = f"#{city_tag(d['city'])}"
-        if t not in tags:
-            tags.append(t)
-    lines.append(' '.join(tags[:30]))
+    countries = list(dict.fromkeys([d.get('country', '') for d in deals]))
+    lines.append(tag_set([o for o, c in origins], [d['city'] for d in deals], countries, reel=True, limit=30))
     return '\n'.join(lines)
 
 
@@ -211,9 +228,12 @@ def build_bio(deals, today_label, out_path, groups=None):
                 i['note'] = ''
         origins.append({'origin': o, 'slug': city_tag(o), 'originFlag': flag_uri(grp[0].get('origin_country', 'Albania')),
                         'note': shared, 'deals': items})
-    page = {'updated': today_label, 'origins': origins, 'cap': PRICE_CAP}
+    import datetime as _dt
+    page = {'updated': today_label, 'origins': origins, 'cap': PRICE_CAP, 'stamp': _dt.datetime.now(_dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')}
     tpl = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bio_template.html')).read()
     open(out_path, 'w').write(tpl.replace('__DATA__', json.dumps(page).replace('</', '<\\/')))
+    # same data as a JSON file: uploaded to Cloudinary each morning, the live site reads it
+    json.dump(page, open(os.path.join(os.path.dirname(out_path) or '.', 'latest.json'), 'w'), ensure_ascii=False)
 
 
 SITE_HEAD = """<!doctype html>
@@ -250,7 +270,7 @@ def site_main():
     os.makedirs(out, exist_ok=True)
     build_bio(None, label, os.path.join(out, 'bio.html'), groups=groups)
     build_site(os.path.join(out, 'bio.html'), os.path.join(out, 'index.html'))
-    print('site built with', [g[0]['origin'] for g in groups if g])
+    print('site built with', [g[0]['origin'] for g in groups if g], '+ latest.json')
 
 
 def main():

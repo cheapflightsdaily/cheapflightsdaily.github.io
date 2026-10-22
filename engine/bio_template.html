@@ -93,13 +93,14 @@ footer { font-size: 13px; color: var(--muted); display: flex; flex-direction: co
 </div>
 
 <script>
-const PAGE = __DATA__;
+let PAGE = __DATA__;
+// The morning task uploads the latest getaways here; the page shows them without needing a new deploy.
+const LIVE_URL = 'https://res.cloudinary.com/hotjty7m/raw/upload/tirana-deals/site/latest.json';
 const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
 const from = document.getElementById('from');
 const list = document.getElementById('list');
 const tabs = document.getElementById('tabs');
-const origins = PAGE.origins || [];
-if (origins.length < 2) tabs.hidden = true;
+let origins = PAGE.origins || [];
 
 function card(d) {
   const card = el('article', 'pass');
@@ -140,14 +141,30 @@ function show(slug, push) {
   if (push) history.replaceState(null, '', '#' + o.slug);
 }
 
-origins.forEach((o) => {
-  const t = el('button', 'tab');
-  t.type = 'button'; t.setAttribute('role', 'tab'); t.dataset.slug = o.slug;
-  if (o.originFlag) { const f = el('img'); f.src = o.originFlag; f.alt = ''; t.append(f); }
-  t.append(document.createTextNode(o.origin));
-  t.addEventListener('click', () => show(o.slug, true));
-  tabs.append(t);
-});
+function buildTabs() {
+  tabs.replaceChildren();
+  tabs.hidden = origins.length < 2;
+  origins.forEach((o) => {
+    const t = el('button', 'tab');
+    t.type = 'button'; t.setAttribute('role', 'tab'); t.dataset.slug = o.slug;
+    if (o.originFlag) { const f = el('img'); f.src = o.originFlag; f.alt = ''; t.append(f); }
+    t.append(document.createTextNode(o.origin));
+    t.addEventListener('click', () => show(o.slug, true));
+    tabs.append(t);
+  });
+}
+buildTabs();
 show(location.hash.slice(1), false);
 window.addEventListener('hashchange', () => show(location.hash.slice(1), false));
+
+fetch(LIVE_URL + '?v=' + Date.now(), { cache: 'no-store' })
+  .then((r) => (r.ok ? r.json() : null))
+  .then((data) => {
+    if (!data || !data.origins || !data.origins.length) return;
+    if ((data.stamp || '') <= (PAGE.stamp || '')) return;
+    PAGE = data; origins = data.origins;
+    buildTabs();
+    show(location.hash.slice(1), false);
+  })
+  .catch(() => {});
 </script>
